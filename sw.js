@@ -1,5 +1,5 @@
 // Macro & Lift service worker: offline app shell, stale-while-revalidate updates.
-const CACHE='macrolift-v14';
+const CACHE='macrolift-v15';
 // Exercise demo clips are NOT precached: each one is stored the first time it plays, in its own cache
 // (kept across app updates) so offline replays work without a big install download.
 const CLIP_CACHE='macrolift-clips-v1';
