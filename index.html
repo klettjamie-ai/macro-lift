@@ -116,6 +116,7 @@ svg text{fill:var(--mut);font-size:10px}
 .scanbox .scanst{position:absolute;left:0;right:0;bottom:10px;text-align:center;color:#fff;font-size:12.5px;font-weight:600;text-shadow:0 1px 3px #000}
 .vidbox{position:relative;width:100%;aspect-ratio:16/9;background:#000;border-radius:12px;overflow:hidden;border:1px solid var(--bd)}
 .vidbox iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.vidbox.clip{aspect-ratio:auto;min-height:200px}.vidbox video{display:block;width:100%;height:auto;max-height:62vh;object-fit:contain;background:#000}
 .vidbox.off{display:flex;align-items:center;justify-content:center;text-align:center;background:var(--card2);padding:14px}
 ol.cues{margin:0;padding-left:20px}ol.cues li{margin:0 0 7px;line-height:1.45}
 hr{border:0;border-top:1px solid var(--bd);margin:12px 0}
@@ -1165,6 +1166,9 @@ const HOWTO=(()=>{const o={};HOWTO_TXT.split('\n').forEach(l=>{const [id,m,c]=l.
 const ytSearch=name=>'https://www.youtube.com/results?search_query='+encodeURIComponent(name.replace(/\s*\(.*?\)/,'')+' exercise proper form');
 function howtoFor(id){const ex=exById(id);const h=HOWTO[id];const v=HOWTO_VIDEOS[id];
  return{name:ex.name,muscles:h?h.muscles:ex.m+((SECONDARY[id]||[]).length?' · '+SECONDARY[id].join(' · '):''),cues:h?h.cues:[],video:v?{id:v[0],ch:v[1],title:v[2]}:null,search:ytSearch(ex.name)}}
+// Exercises with a reviewed Grok Imagine form clip in pwa/clips/<id>.mp4 (cached by the SW on first play, not precached).
+const CLIPS=new Set(["back-squat", "barbell-bench-press", "bulgarian-split-squat", "chest-supported-dumbbell-row", "dead-bug", "deadlift", "dumbbell-bench-press", "dumbbell-curl", "dumbbell-lateral-raise", "dumbbell-rear-delt-fly", "dumbbell-reverse-lunge", "dumbbell-romanian-deadlift", "glute-bridge", "goblet-squat", "hammer-curl", "incline-dumbbell-curl", "incline-dumbbell-press", "lat-pulldown", "overhead-dumbbell-triceps-extension", "plank-seconds", "push-up", "romanian-deadlift", "seated-dumbbell-shoulder-press", "single-arm-dumbbell-row"]);
+const clipUrl=id=>`clips/${id}.mp4`;
 const ytEmbed=id=>`https://www.youtube-nocookie.com/embed/${id}?playsinline=1&rel=0&modestbranding=1`;
 // Suggested programs: [exerciseId, sets, repMin, repMax, rest seconds]
 const SG=(id,sets,a,b,rest)=>({exId:id,sets,repMin:a,repMax:b,rest});
@@ -1212,16 +1216,21 @@ function startSuggested(id,di){if(S.train.active){toast('Finish or discard the c
  S.train.active=newSessionFrom(d.name,d.items,sv?sv.id:null,sv?di:null);save();return true}
 function saveSuggested(id){let sv=sugSaved(id);if(sv){S.train.activeProg=sv.id;save();return{prog:sv,existed:true}}
  const p=sugById(id);sv={id:'p-'+uid(),name:p.name,fromSug:id,days:JSON.parse(JSON.stringify(p.days.map(d=>({name:d.name,items:d.items}))))};S.train.programs.push(sv);if(!S.train.activeProg)S.train.activeProg=sv.id;save();return{prog:sv,existed:false}}
+function clipFail(v){const b=v.closest('.vidbox');if(!b)return;b.classList.add('off');b.innerHTML=`<div><div style="font-size:28px">📶</div><b>Clip needs internet</b><div class="sm mut">It plays offline once you've watched it online. The cues below work offline.</div></div>`}
+function ytBlock(h,online){return online?`<div class="vidbox"><iframe src="${ytEmbed(h.video.id)}" title="${esc(h.video.title)}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen playsinline></iframe></div>
+  <div class="sm mut" style="margin:6px 0 0">▶ ${esc(h.video.title)} · <b>${esc(h.video.ch)}</b></div>`
+  :`<div class="vidbox off"><div><div style="font-size:28px">📶</div><b>Video needs internet</b><div class="sm mut">Connect to watch the demo. The cues below work offline.</div></div></div>`}
 function howtoSheet(id){return()=>{const h=howtoFor(id);const ex=exById(id);const online=navigator.onLine!==false;
- let vid;if(h.video)vid=online?`<div class="vidbox"><iframe src="${ytEmbed(h.video.id)}" title="${esc(h.video.title)}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen playsinline></iframe></div>
-  <div class="sm mut" style="margin:6px 0 0">▶ ${esc(h.video.title)} · <b>${esc(h.video.ch)}</b> · <a class="link sm" style="padding:0" href="https://www.youtube.com/watch?v=${h.video.id}" target="_blank" rel="noopener">Open in YouTube</a></div>`
-  :`<div class="vidbox off"><div><div style="font-size:28px">📶</div><b>Video needs internet</b><div class="sm mut">Connect to watch the demo. The cues below work offline.</div></div></div>`;
+ let vid,credit='';
+ if(CLIPS.has(id)){vid=`<div class="vidbox clip"><video src="${clipUrl(id)}" autoplay muted loop playsinline disablepictureinpicture preload="auto" aria-label="Form demo: ${esc(h.name)}" onerror="clipFail(this)"></video></div>
+  <div class="sm mut" style="margin:6px 0 0">▶ Form demo · ${esc(h.name)} · loops silently</div>`;credit=`<div class="sm mut c">Demo clip: AI-generated (Grok Imagine) and checked against the cues above.</div>`}
+ else if(h.video){vid=ytBlock(h,online);credit=`<div class="sm mut c">Video: ${esc(h.video.ch)} on YouTube (privacy-enhanced embed).</div>`}
  else vid=`<div class="vidbox off"><div><div style="font-size:28px">🔎</div><b>No verified demo yet</b><div class="sm mut" style="margin-bottom:8px">Find a demo on YouTube instead.</div><a class="btn sm" href="${h.search}" target="_blank" rel="noopener">Search YouTube for “${esc(h.name.replace(/\s*\(.*?\)/,''))}”</a></div></div>`;
  return sheetHd('How to: '+esc(h.name))+`<div class="sm mut" style="margin:-8px 0 10px">${esc(ex.eq)} · ${ex.t==='c'?'compound':'isolation'}</div>${vid}
  <div class="card" style="margin-top:12px"><h2>💪 Muscles worked</h2><div>${esc(h.muscles)}</div></div>
  <div class="card"><h2>✅ Form cues</h2>${h.cues.length?`<ol class="cues">${h.cues.map(c=>`<li>${esc(c)}</li>`).join('')}</ol>`:`<div class="sm mut">No cues for custom exercises. Use the YouTube search above.</div>`}</div>
- ${h.video?`<div class="sm mut c">Video: ${esc(h.video.ch)} on YouTube (privacy-enhanced embed).</div>`:''}`}}
-function howtoOpen(){return SHEETS.some(f=>f._howto)}
+ ${credit}`}}
+function howtoOpen(){return SHEETS.some(f=>f._howto&&!CLIPS.has(f._howto))}
 function openHowto(id){const f=howtoSheet(id);f._howto=id;openSheet(f)}
 window.addEventListener('online',()=>{if(howtoOpen())renderSheets()});window.addEventListener('offline',()=>{if(howtoOpen())renderSheets()});
 
@@ -1382,7 +1391,7 @@ document.addEventListener('change',ev=>{if(ev.target.id==='importf'){const f=ev.
  if(ev.target.tagName==='SELECT')onInput(ev);
 });
 matchMedia('(prefers-color-scheme: dark)').addEventListener&&matchMedia('(prefers-color-scheme: dark)').addEventListener('change',applyTheme);
-window.MT={get S(){return S},set S(v){S=v},save,render,computeCheckin,suggestNext,warmups,weightTrend,calcTargets,SUGGESTED,HOWTO,HOWTO_VIDEOS,howtoFor,sugById,dayMinutes,normCode,validCode,upceToUpca,barcodeVariants,offToFood,offNutr,lookupBarcode,cachedBarcode,mealByTime,get SP(){return SP},get SC(){return SC},CAM,formulaTDEE,bmr,e1rm,weeklyMuscleSets,FOODS,EXERCISES,TEMPLATES,U,dkey,addDays,today};
+window.MT={get S(){return S},set S(v){S=v},CLIPS,clipUrl,save,render,computeCheckin,suggestNext,warmups,weightTrend,calcTargets,SUGGESTED,HOWTO,HOWTO_VIDEOS,howtoFor,sugById,dayMinutes,normCode,validCode,upceToUpca,barcodeVariants,offToFood,offNutr,lookupBarcode,cachedBarcode,mealByTime,get SP(){return SP},get SC(){return SC},CAM,formulaTDEE,bmr,e1rm,weeklyMuscleSets,FOODS,EXERCISES,TEMPLATES,U,dkey,addDays,today};
 render();
 if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(e=>console.warn('SW registration failed',e)));
 
