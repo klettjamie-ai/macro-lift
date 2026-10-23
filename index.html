@@ -1663,7 +1663,7 @@ function ytBlock(h,online){return online?`<div class="vidbox"><iframe src="${ytE
   :`<div class="vidbox off"><div><div style="font-size:28px">📶</div><b>Video needs internet</b><div class="sm mut">Connect to watch the demo. The cues below work offline.</div></div></div>`}
 function howtoSheet(id){return()=>{const h=howtoFor(id);const ex=exById(id);const online=navigator.onLine!==false;
  let vid,credit='';
- const apx=APPROX.has(id)&&!!h.video,coach=apx&&!!(U.coach&&U.coach[id]);
+ const apx=APPROX.has(id)&&!!h.video,coach=apx&&!(U.aclip&&U.aclip[id]);
  const tog=apx?`<button class="btn sm" style="margin-top:8px" data-act="coachvid" data-v="${id}">${coach?'▶ Show demo clip':'▶ Watch coach video'}</button>`:'';
  if(coach){vid=ytBlock(h,online)+tog;credit=`<div class="sm mut c">Video: ${esc(h.video.ch)} on YouTube (privacy-enhanced embed).</div>`}
  else if(CLIPS.has(id)){vid=`<div class="vidbox clip"><video src="${clipUrl(id)}" autoplay muted loop playsinline disablepictureinpicture preload="auto" aria-label="Form demo: ${esc(h.name)}" onerror="clipFail(this)"></video></div>
@@ -1674,7 +1674,7 @@ function howtoSheet(id){return()=>{const h=howtoFor(id);const ex=exById(id);cons
  <div class="card" style="margin-top:12px"><h2>💪 Muscles worked</h2><div>${esc(h.muscles)}</div></div>
  <div class="card"><h2>✅ Form cues</h2>${h.cues.length?`<ol class="cues">${h.cues.map(c=>`<li>${esc(c)}</li>`).join('')}</ol>`:`<div class="sm mut">No cues for custom exercises. Use the YouTube search above.</div>`}</div>
  ${credit}`}}
-function howtoOpen(){return SHEETS.some(f=>f._howto&&(!CLIPS.has(f._howto)||!!(U.coach&&U.coach[f._howto])))}
+function howtoOpen(){return SHEETS.some(f=>f._howto&&(!CLIPS.has(f._howto)||(APPROX.has(f._howto)&&!!HOWTO_VIDEOS[f._howto]&&!(U.aclip&&U.aclip[f._howto]))))}
 function openHowto(id){const f=howtoSheet(id);f._howto=id;openSheet(f)}
 window.addEventListener('online',()=>{if(howtoOpen())renderSheets()});window.addEventListener('offline',()=>{if(howtoOpen())renderSheets()});
 
@@ -1803,7 +1803,7 @@ const ACTIONS={
  sugstart:el=>{if(startSuggested(el.dataset.v,+el.dataset.d)){SHEETS=[];renderSheets();U.sec='t';U.ttab='workout';window.scrollTo(0,0);render();toast('Workout started: '+S.train.active.name)}},
  sugsave:el=>{const r=saveSuggested(el.dataset.v);toast(r.existed?r.prog.name+' is now your active program':'Saved “'+r.prog.name+'” to My programs');renderSheets();render()},
  howto:el=>openHowto(el.dataset.v),
- coachvid:el=>{const id=el.dataset.v;U.coach=U.coach||{};U.coach[id]=!U.coach[id];renderSheets()}
+ coachvid:el=>{const id=el.dataset.v;U.aclip=U.aclip||{};U.aclip[id]=!U.aclip[id];renderSheets()}
 };
 document.addEventListener('click',ev=>{const bg=ev.target.closest('.sheet-bg');if(bg&&ev.target===bg){closeSheet();return}
  const el=ev.target.closest('[data-act]');if(!el)return;const fn=ACTIONS[el.dataset.act];if(fn){ev.preventDefault();try{fn(el)}catch(e){console.error(e);toast('Error: '+e.message)}}});
